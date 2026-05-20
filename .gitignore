@@ -1,0 +1,6 @@
+dist/
+node_modules/
+redacted/
+redactkit-map.json
+*.tgz
+.DS_Store
