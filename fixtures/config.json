@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "name": "Alice",
+      "email": "alice@internal.corp",
+      "home": "/home/alice/.config/app",
+      "ip": "192.168.1.42"
+    }
+  ],
+  "config": {
+    "api_url": "https://staging.internal.corp/api",
+    "token": "ghp_ABC123DEF456GHI789JKL012MNO345PQR",
+    "server": "10.104.32.1"
+  }
+}

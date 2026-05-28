@@ -25,7 +25,7 @@ export const builtInRules: RedactionRule[] = [
   rule(
     "token",
     "Common token or API key assignment.",
-    /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|secret|token)\b\s*[:=]\s*["']?([A-Za-z0-9._~+/=-]{12,})["']?/gi,
+    /"?(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|secret|token)"?\s*[:=]\s*["']?([A-Za-z0-9._~+/=-]{12,})["']?/gi,
     "TOKEN",
   ),
   rule(

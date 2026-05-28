@@ -1,0 +1,2 @@
+no secrets here, just a plain log line
+everything is normal

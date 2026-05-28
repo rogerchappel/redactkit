@@ -1,0 +1,11 @@
+{
+  "rules": [
+    {
+      "name": "order-id",
+      "pattern": "ORD-[A-Z0-9]{6}",
+      "flags": "g",
+      "placeholder": "ORDER_ID",
+      "description": "Internal order identifiers"
+    }
+  ]
+}

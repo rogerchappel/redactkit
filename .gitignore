@@ -2,5 +2,10 @@ dist/
 node_modules/
 redacted/
 redactkit-map.json
+tmp-debug-map.json
+tmp-debug/
+tmp-smoke-2/
+tmp-smoke/
+tmp-test/
 *.tgz
 .DS_Store

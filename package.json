@@ -4,18 +4,18 @@
   "description": "Local-first CLI for scrubbing secrets and private details from logs, transcripts, and fixtures.",
   "type": "module",
   "bin": {
-    "redactkit": "./dist/cli.js"
+    "redactkit": "./dist/src/cli.js"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
     }
   },
   "files": [
-    "dist",
+    "dist/src",
     "README.md"
   ],
   "scripts": {
@@ -23,10 +23,10 @@
     "clean": "rm -rf dist",
     "dev": "tsx src/cli.ts",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node --test dist/tests/*.test.js",
-    "smoke": "pnpm run build && bash scripts/smoke.sh",
+    "test": "node --test dist/tests/*.test.js",
+    "smoke": "bash scripts/smoke.sh",
     "package:smoke": "npm pack --dry-run",
-    "release:check": "pnpm run check && pnpm test && pnpm run smoke && npm run package:smoke"
+    "release:check": "tsc -p tsconfig.json --noEmit && node --test dist/tests/*.test.js && bash scripts/smoke.sh && npm pack --dry-run"
   },
   "keywords": [
     "redaction",

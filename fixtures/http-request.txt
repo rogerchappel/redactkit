@@ -1,0 +1,5 @@
+POST https://api.github.com/repos/test/pull
+Authorization: Bearer ghp_REALTOKEN1234567890abcdef
+Content-Type: application/json
+
+{"token": "sk-abc-1234567890abcdef", "email": "user@test.org"}

@@ -1,0 +1,7 @@
+DEBUG: Request to https://api.example.com/v1/users
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.secretsignature
+X-Api-Key: sk-proj-abc123def456ghi789jkl012mno
+
+Connection from 10.0.0.1
+User email: developer@example.com
+Home: /Users/roger/.ssh/id_rsa
