@@ -46,6 +46,15 @@ the default security policy before publishing the generated repository.
 
 These links assume this README has been copied to the generated repository root.
 
+## Verification
+
+Use the package scripts as the public smoke gates before publishing or changing CLI behavior.
+
+- `npm run release:check`
+- `npm run test`
+- `npm run smoke`
+- `npm run check`
+
 ## License
 
 MIT
