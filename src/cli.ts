@@ -102,13 +102,13 @@ async function main() {
   const pkg = JSON.parse(readFileSync(join(import.meta.dirname, "..", "..", "package.json"), "utf8"));
   const { command, files, flags } = parseArgs(process.argv);
 
-  if (flags.help || command === "help" || command === "--help" || command === "-h") {
-    printHelp();
+  if (flags.version) {
+    console.log(pkg.version);
     process.exit(0);
   }
 
-  if (flags.version) {
-    console.log(pkg.version);
+  if (flags.help || command === "help" || command === "--help" || command === "-h") {
+    printHelp();
     process.exit(0);
   }
 
