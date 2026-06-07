@@ -7,7 +7,7 @@ echo "=== redactkit smoke test ==="
 
 # Build
 echo "Building..."
-pnpm run build >/dev/null
+npm run build >/dev/null
 
 # Scan should find secrets in fixture
 echo "Scanning sample.log..."
