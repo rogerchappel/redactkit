@@ -16,7 +16,9 @@
   },
   "files": [
     "dist/src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -45,5 +47,13 @@
     "@types/node": "^22.15.21",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerchappel/redactkit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rogerchappel/redactkit/issues"
+  },
+  "homepage": "https://github.com/rogerchappel/redactkit#readme"
 }
