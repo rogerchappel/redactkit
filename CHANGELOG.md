@@ -7,6 +7,7 @@ format and uses semantic versioning when versioned releases are published.
 
 ## [Unreleased]
 
+- Added release-readiness validation for package metadata, CI placeholder cleanup, and package smoke coverage.
 ### Added
 
 - Initial project setup.
