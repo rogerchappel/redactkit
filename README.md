@@ -9,20 +9,24 @@ security posture before using it in production.
 
 ## Install
 
-Replace this section with the generated repository's installation steps.
+Install dependencies and build the CLI from a checkout:
 
 ```sh
-pnpm install
+npm install
+npm run build
 ```
 
 ## Use
 
-Replace this section with the smallest useful example for the generated
-repository.
+Run the CLI against local text or fixture files after building:
 
 ```sh
-pnpm dev
+node dist/src/cli.js --help
+npm run smoke
 ```
+
+Use `npm run smoke` for the maintained sample redaction path before changing
+rules or CLI output.
 
 ## Verify
 
