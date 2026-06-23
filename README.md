@@ -31,6 +31,10 @@ node dist/src/cli.js redact fixtures/sample.log --out-dir tmp-redacted --map tmp
 
 ```sh
 npm run build
+npm test
+npm run smoke
+npm run package:smoke
+npm run release:readiness
 npm run release:check
 ```
 

@@ -27,10 +27,10 @@
     "clean": "rm -rf dist",
     "dev": "tsx src/cli.ts",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/tests/*.test.js",
+    "test": "npm run build && node --test dist/tests/*.test.js",
     "smoke": "bash scripts/smoke.sh",
     "package:smoke": "npm pack --dry-run",
-    "release:check": "tsc -p tsconfig.json --noEmit && node --test dist/tests/*.test.js && bash scripts/smoke.sh && npm pack --dry-run",
+    "release:check": "npm run check && npm test && npm run smoke && npm run package:smoke",
     "release:readiness": "node scripts/validate-release-readiness.mjs"
   },
   "keywords": [
