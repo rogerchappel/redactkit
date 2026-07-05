@@ -8,8 +8,11 @@ format and uses semantic versioning when versioned releases are published.
 ## [Unreleased]
 
 - Added release-readiness validation for package metadata, CI placeholder cleanup, and package smoke coverage.
+
 ### Added
 
+- Added package smoke validation that proves CLI entrypoints, type declarations, docs, and custom-rule examples are included in the npm tarball.
+- Added fixture-backed CLI coverage for custom redaction rule files.
 - Initial project setup.
 
 ## Release Links

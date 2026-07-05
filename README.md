@@ -27,6 +27,34 @@ Write redacted copies and a placeholder map:
 node dist/src/cli.js redact fixtures/sample.log --out-dir tmp-redacted --map tmp-redacted/map.json
 ```
 
+Use custom rules for project-specific identifiers:
+
+```sh
+node dist/src/cli.js redact examples/support-transcript.txt \
+  --rules examples/custom-rules.json \
+  --out-dir tmp-redacted \
+  --map tmp-redacted/map.json
+```
+
+The rule file is JSON:
+
+```json
+{
+  "rules": [
+    {
+      "name": "internal-ticket",
+      "pattern": "SUP-[0-9]{6}",
+      "flags": "g",
+      "placeholder": "TICKET"
+    }
+  ]
+}
+```
+
+The redacted output keeps stable placeholders such as
+`<REDACTED_TICKET_001>`. The map file records the original value for local
+review and should not be published with shared fixtures.
+
 ## Verify
 
 ```sh

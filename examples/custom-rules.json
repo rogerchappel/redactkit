@@ -1,0 +1,11 @@
+{
+  "rules": [
+    {
+      "name": "internal-ticket",
+      "description": "Internal ticket identifiers that should not leave support fixtures.",
+      "pattern": "SUP-[0-9]{6}",
+      "flags": "g",
+      "placeholder": "TICKET"
+    }
+  ]
+}

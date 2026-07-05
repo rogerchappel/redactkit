@@ -5,13 +5,28 @@ cd "$(dirname "$0")/.."
 
 echo "=== redactkit smoke test ==="
 
+expect_exit() {
+  local expected="$1"
+  shift
+
+  set +e
+  "$@"
+  local actual=$?
+  set -e
+
+  if [ "$actual" -ne "$expected" ]; then
+    echo "FAIL: expected exit $expected but got $actual for: $*"
+    exit 1
+  fi
+}
+
 # Build
 echo "Building..."
 npm run build >/dev/null
 
 # Scan should find secrets in fixture
 echo "Scanning sample.log..."
-node dist/src/cli.js scan fixtures/sample.log && echo "FAIL: expected non-zero exit" || true
+expect_exit 1 node dist/src/cli.js scan fixtures/sample.log
 
 # Scan clean file should be zero exit
 echo "Scanning clean.txt..."
@@ -23,6 +38,20 @@ echo "Redacting sample.log..."
 rm -rf tmp-smoke
 node dist/src/cli.js redact fixtures/sample.log --out-dir tmp-smoke/out --map tmp-smoke/map.json
 echo "✓ Redact passed"
+
+# Custom rules should work from a published example
+echo "Redacting support transcript with custom rules..."
+rm -rf tmp-smoke-custom
+node dist/src/cli.js redact examples/support-transcript.txt --rules examples/custom-rules.json --out-dir tmp-smoke-custom/out --map tmp-smoke-custom/map.json
+if grep -q "SUP-104221" tmp-smoke-custom/out/support-transcript.txt; then
+  echo "FAIL: custom rule did not redact support ticket"
+  exit 1
+fi
+if ! grep -q "REDACTED_TICKET" tmp-smoke-custom/out/support-transcript.txt; then
+  echo "FAIL: custom placeholder missing from redacted output"
+  exit 1
+fi
+echo "✓ Custom rule redaction passed"
 
 # Verify redacted file doesn't contain raw secrets
 if grep -q "Bearer eyJ" tmp-smoke/out/sample.log; then
@@ -56,15 +85,15 @@ node dist/src/cli.js --version | grep -qE "^[0-9]" || { echo "FAIL: version outp
 echo "✓ Version works"
 
 # Unknown command
-node dist/src/cli.js foobar 2>&1 || true
+expect_exit 2 node dist/src/cli.js foobar
 echo "✓ Unknown command handled"
 
 # No files
-node dist/src/cli.js scan 2>&1 || true
+expect_exit 2 node dist/src/cli.js scan
 echo "✓ No-files error handled"
 
 # Cleanup
-rm -rf tmp-smoke tmp-smoke-2
+rm -rf tmp-smoke tmp-smoke-2 tmp-smoke-custom
 
 echo ""
 echo "=== All smoke tests passed ✓ ==="
