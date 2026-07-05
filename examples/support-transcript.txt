@@ -1,0 +1,6 @@
+Support transcript
+
+Reporter: alex@example.com
+Ticket: SUP-104221
+Trace URL: https://internal.example.test/traces/SUP-104221
+Home path: /Users/alex/project
