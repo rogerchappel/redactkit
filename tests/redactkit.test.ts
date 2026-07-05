@@ -1,5 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { scan, redact, builtInRules, cloneRule, fingerprint } from "../src/index.js";
@@ -324,5 +325,38 @@ describe("stable mapping — same value gets same placeholder", () => {
     const entries = (map.entries as unknown as PlaceholderRecord[]).filter((e) => e.rule === "email");
     assert.equal(entries.length, 1);
     assert.equal(entries[0].value, "user@test.com");
+  });
+});
+
+describe("cli — custom rule files", () => {
+  it("redacts example support tickets through --rules", () => {
+    const outDir = join(TMP, "cli-custom-out");
+    const mapPath = join(TMP, "cli-custom-map.json");
+    rmSync(outDir, { recursive: true, force: true });
+    rmSync(mapPath, { force: true });
+
+    execFileSync(
+      process.execPath,
+      [
+        "dist/src/cli.js",
+        "redact",
+        "examples/support-transcript.txt",
+        "--rules",
+        "examples/custom-rules.json",
+        "--out-dir",
+        outDir,
+        "--map",
+        mapPath,
+      ],
+      { encoding: "utf8" },
+    );
+
+    const output = readFileSync(join(outDir, "support-transcript.txt"), "utf8");
+    assert.ok(!output.includes("SUP-104221"));
+    assert.match(output, /REDACTED_TICKET/);
+
+    const map = JSON.parse(readFileSync(mapPath, "utf8"));
+    const ticketEntry = (map.entries as PlaceholderRecord[]).find((entry) => entry.rule === "internal-ticket");
+    assert.equal(ticketEntry?.value, "SUP-104221");
   });
 });
