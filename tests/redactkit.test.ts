@@ -266,6 +266,30 @@ describe("redact — fixture files", () => {
     assert.ok(existsSync(join(outDir, "sample.log")));
     assert.ok(existsSync(join(outDir, "config.json")));
   });
+
+  it("preserves relative paths when input basenames collide", () => {
+    const inputDir = join(TMP, "redact-collision-input");
+    const outDir = join(TMP, "redact-collision-output");
+    const firstFile = join(inputDir, "first", "app.log");
+    const secondFile = join(inputDir, "second", "app.log");
+    mkdirSync(join(inputDir, "first"), { recursive: true });
+    mkdirSync(join(inputDir, "second"), { recursive: true });
+    writeFileSync(firstFile, "first: alice@example.com\n", "utf8");
+    writeFileSync(secondFile, "second: bob@example.com\n", "utf8");
+
+    const result = redact({
+      files: [firstFile, secondFile],
+      outDir,
+      mapPath: outDir + "-map.json",
+      rules: allRules.map(cloneRule),
+    });
+
+    const firstOutput = join(outDir, "first", "app.log");
+    const secondOutput = join(outDir, "second", "app.log");
+    assert.deepEqual(result.written, [firstOutput, secondOutput]);
+    assert.match(readFileSync(firstOutput, "utf8"), /^first: <REDACTED_EMAIL_001>$/m);
+    assert.match(readFileSync(secondOutput, "utf8"), /^second: <REDACTED_EMAIL_002>$/m);
+  });
 });
 
 describe("redact — with custom rules", () => {

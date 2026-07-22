@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { resolve, basename, dirname, join } from "node:path";
+import { resolve, dirname, isAbsolute, relative, join, sep } from "node:path";
 import type {
   RedactionRule,
   RedactionMatch,
@@ -50,6 +50,33 @@ function scanFile(
   return matches;
 }
 
+function resolveOutputPaths(filePaths: string[], outDir: string): string[] {
+  if (filePaths.length === 0) return [];
+
+  let commonParent = dirname(filePaths[0]);
+  for (const filePath of filePaths.slice(1)) {
+    let relativePath = relative(commonParent, filePath);
+    while (
+      relativePath === ".." ||
+      relativePath.startsWith(`..${sep}`) ||
+      isAbsolute(relativePath)
+    ) {
+      const parent = dirname(commonParent);
+      if (parent === commonParent) {
+        throw new Error("Input files must share a common parent directory");
+      }
+      commonParent = parent;
+      relativePath = relative(commonParent, filePath);
+    }
+  }
+
+  const outFiles = filePaths.map((filePath) => join(outDir, relative(commonParent, filePath)));
+  if (new Set(outFiles).size !== outFiles.length) {
+    throw new Error("Input files must resolve to distinct output paths");
+  }
+  return outFiles;
+}
+
 export function scan(options: ScanOptions): ScanResult {
   const map = new PlaceholderMap();
   const allMatches: RedactionMatch[] = [];
@@ -69,11 +96,12 @@ export function redact(options: RedactOptions): RedactResult {
   const map = new PlaceholderMap();
   const allMatches: RedactionMatch[] = [];
   const written: string[] = [];
+  const filePaths = options.files.map((file) => resolve(file));
+  const outFiles = resolveOutputPaths(filePaths, options.outDir);
 
   mkdirSync(options.outDir, { recursive: true });
 
-  for (const file of options.files) {
-    const filePath = resolve(file);
+  for (const [index, filePath] of filePaths.entries()) {
     const content = readFileSync(filePath, "utf8");
     let output = content;
 
@@ -121,7 +149,8 @@ export function redact(options: RedactOptions): RedactResult {
     }
 
     // Write redacted file
-    const outFile = join(options.outDir, basename(filePath));
+    const outFile = outFiles[index];
+    mkdirSync(dirname(outFile), { recursive: true });
     writeFileSync(outFile, output, "utf8");
     written.push(outFile);
   }
