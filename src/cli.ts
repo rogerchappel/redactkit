@@ -4,6 +4,8 @@ import { readFileSync, existsSync } from "node:fs";
 import { redact, scan, builtInRules, cloneRule } from "./redact.js";
 import type { RedactionRule, SerializableRule } from "./types.js";
 
+class CliUsageError extends Error {}
+
 function printHelp() {
   console.log(`redactkit — local-first log & fixture redaction
 
@@ -67,8 +69,16 @@ function parseArgs(argv: string[]): { command: string; files: string[]; flags: R
     }
     if (arg === "--out-dir" || arg === "--map" || arg === "--rules") {
       const key = arg.slice(2);
-      flags[flagKeyMap[key] || key] = args[++i] as string;
+      const value = args[i + 1];
+      if (value === undefined || value.startsWith("-")) {
+        throw new CliUsageError(`Option ${arg} requires a value.`);
+      }
+      flags[flagKeyMap[key] || key] = value;
+      i++;
       continue;
+    }
+    if (arg.startsWith("-")) {
+      throw new CliUsageError(`Unknown option: ${arg}`);
     }
     if (!arg.startsWith("-")) {
       if (command === "help") {
@@ -175,5 +185,5 @@ async function main() {
 
 main().catch((err) => {
   console.error(`Error: ${err.message}`);
-  process.exit(1);
+  process.exit(err instanceof CliUsageError ? 2 : 1);
 });
