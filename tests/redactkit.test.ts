@@ -1,6 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { scan, redact, builtInRules, cloneRule, fingerprint } from "../src/index.js";
@@ -382,5 +382,51 @@ describe("cli — custom rule files", () => {
     const map = JSON.parse(readFileSync(mapPath, "utf8"));
     const ticketEntry = (map.entries as PlaceholderRecord[]).find((entry) => entry.rule === "internal-ticket");
     assert.equal(ticketEntry?.value, "SUP-104221");
+  });
+});
+
+describe("cli — option validation", () => {
+  function runCli(args: string[]) {
+    return spawnSync(process.execPath, ["dist/src/cli.js", ...args], { encoding: "utf8" });
+  }
+
+  for (const option of ["--out-dir", "--map", "--rules"]) {
+    it(`rejects ${option} without a value`, () => {
+      const result = runCli(["redact", "fixtures/sample.log", option]);
+
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, new RegExp(`Option ${option} requires a value`));
+    });
+  }
+
+  it("rejects a value-taking option followed by another option", () => {
+    const result = runCli(["redact", "fixtures/sample.log", "--out-dir", "--map", "map.json"]);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Option --out-dir requires a value/);
+  });
+
+  it("rejects unknown options", () => {
+    const result = runCli(["scan", "fixtures/clean.txt", "--bogus"]);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Unknown option: --bogus/);
+  });
+
+  it("accepts options before and after file operands", () => {
+    const outDir = join(TMP, "cli-order-out");
+    const mapPath = join(TMP, "cli-order-map.json");
+    const result = runCli([
+      "--out-dir",
+      outDir,
+      "redact",
+      "fixtures/sample.log",
+      "--map",
+      mapPath,
+    ]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(existsSync(join(outDir, "sample.log")));
+    assert.ok(existsSync(mapPath));
   });
 });
