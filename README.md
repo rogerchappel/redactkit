@@ -36,6 +36,10 @@ node dist/src/cli.js redact examples/support-transcript.txt \
   --map tmp-redacted/map.json
 ```
 
+Options can appear before or after file operands. Unknown options, or
+`--out-dir`, `--map`, and `--rules` without a value, are usage errors and exit
+with status 2.
+
 The rule file is JSON:
 
 ```json
