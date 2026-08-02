@@ -325,6 +325,64 @@ describe("redact — with custom rules", () => {
     assert.match(content, /REDACTED_ORDER_ID/);
     assert.match(content, /REDACTED_EMAIL/);
   });
+
+  it("applies every match from a non-global custom rule", () => {
+    const testDir = join(TMP, "redact-custom-non-global");
+    const testFile = join(testDir, "tickets.txt");
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(testFile, "SUP-100001 and SUP-100002", "utf8");
+    const rule: RedactionRule = {
+      name: "ticket",
+      description: "Support ticket",
+      pattern: /SUP-[0-9]{6}/i,
+      placeholder: "TICKET",
+      source: "custom",
+    };
+
+    const scanResult = scan({ files: [testFile], rules: [rule] });
+    assert.equal(scanResult.matches.length, 2);
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(TMP, "redact-custom-non-global-out"),
+      mapPath: join(TMP, "redact-custom-non-global-map.json"),
+      rules: [rule],
+    });
+    assert.equal(result.matches.length, 2);
+    assert.equal(
+      readFileSync(result.written[0], "utf8"),
+      "<REDACTED_TICKET_001> and <REDACTED_TICKET_002>",
+    );
+  });
+
+  it("finishes scan and redact for a zero-length custom rule", () => {
+    const testDir = join(TMP, "redact-custom-empty");
+    const testFile = join(testDir, "input.txt");
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(testFile, "ab", "utf8");
+    const rule: RedactionRule = {
+      name: "boundary",
+      description: "Empty boundary",
+      pattern: /(?=.)/,
+      placeholder: "BOUNDARY",
+      source: "custom",
+    };
+
+    const scanResult = scan({ files: [testFile], rules: [rule] });
+    assert.equal(scanResult.matches.length, 2);
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(TMP, "redact-custom-empty-out"),
+      mapPath: join(TMP, "redact-custom-empty-map.json"),
+      rules: [rule],
+    });
+    assert.equal(result.matches.length, 2);
+    assert.equal(
+      readFileSync(result.written[0], "utf8"),
+      "<REDACTED_BOUNDARY_001>a<REDACTED_BOUNDARY_001>b",
+    );
+  });
 });
 
 describe("stable mapping — same value gets same placeholder", () => {
@@ -383,6 +441,64 @@ describe("cli — custom rule files", () => {
     const ticketEntry = (map.entries as PlaceholderRecord[]).find((entry) => entry.rule === "internal-ticket");
     assert.equal(ticketEntry?.value, "SUP-104221");
   });
+
+  for (const testCase of [
+    { name: "non-global", pattern: "SUP-[0-9]{6}", flags: "i", expected: 2 },
+    { name: "zero-length", pattern: "(?=.)", flags: "", expected: 21 },
+  ]) {
+    it(`finishes scan and redact for a ${testCase.name} rule`, () => {
+      const testDir = join(TMP, `cli-custom-${testCase.name}`);
+      const input = join(testDir, "input.txt");
+      const rules = join(testDir, "rules.json");
+      const outDir = join(testDir, "out");
+      const mapPath = join(testDir, "map.json");
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(input, "SUP-100001 SUP-100002", "utf8");
+      writeFileSync(
+        rules,
+        JSON.stringify({
+          rules: [
+            {
+              name: testCase.name,
+              pattern: testCase.pattern,
+              flags: testCase.flags,
+              placeholder: "CUSTOM",
+            },
+          ],
+        }),
+        "utf8",
+      );
+
+      const scanResult = spawnSync(
+        process.execPath,
+        ["dist/src/cli.js", "scan", input, "--rules", rules],
+        { encoding: "utf8", timeout: 2_000 },
+      );
+      assert.equal(scanResult.error, undefined);
+      assert.equal(scanResult.status, 1, scanResult.stderr);
+      assert.match(scanResult.stdout, new RegExp(`Found ${testCase.expected} match\\(es\\)`));
+
+      const redactResult = spawnSync(
+        process.execPath,
+        [
+          "dist/src/cli.js",
+          "redact",
+          input,
+          "--rules",
+          rules,
+          "--out-dir",
+          outDir,
+          "--map",
+          mapPath,
+        ],
+        { encoding: "utf8", timeout: 2_000 },
+      );
+      assert.equal(redactResult.error, undefined);
+      assert.equal(redactResult.status, 0, redactResult.stderr);
+      assert.match(redactResult.stdout, new RegExp(`Redacted ${testCase.expected} match\\(es\\)`));
+      assert.ok(existsSync(join(outDir, "input.txt")));
+    });
+  }
 });
 
 describe("cli — option validation", () => {

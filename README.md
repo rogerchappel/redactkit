@@ -55,6 +55,12 @@ The rule file is JSON:
 }
 ```
 
+The `flags` field accepts JavaScript regular-expression flags. The `g` flag is
+optional: RedactKit always iterates custom rules across the complete input.
+Patterns that can match an empty string are also supported; iteration advances
+by one Unicode code point after each empty match so scans and redactions finish
+deterministically.
+
 The redacted output keeps stable placeholders such as
 `<REDACTED_TICKET_001>`. The map file records the original value for local
 review and should not be published with shared fixtures.

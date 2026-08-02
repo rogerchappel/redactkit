@@ -12,6 +12,23 @@ import { PlaceholderMap } from "./placeholders.js";
 import { fingerprint } from "./fingerprint.js";
 import { cloneRule, builtInRules } from "./rules.js";
 
+function* ruleMatches(rule: RedactionRule, content: string): Generator<RegExpExecArray> {
+  const flags = rule.pattern.flags.includes("g") ? rule.pattern.flags : `${rule.pattern.flags}g`;
+  const pattern = new RegExp(rule.pattern.source, flags);
+  let match: RegExpExecArray | null;
+
+  // RegExp.exec does not advance after an empty match, so advance by one code
+  // point to keep user-supplied rules finite without changing their matches.
+  // eslint-disable-next-line no-cond-assign
+  while ((match = pattern.exec(content)) !== null) {
+    yield match;
+    if (match[0].length === 0) {
+      const codePoint = content.codePointAt(pattern.lastIndex);
+      pattern.lastIndex += codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
+    }
+  }
+}
+
 function scanFile(
   filePath: string,
   rules: RedactionRule[],
@@ -21,11 +38,7 @@ function scanFile(
   const matches: RedactionMatch[] = [];
 
   for (const rule of rules) {
-    // Reset lastIndex for global regexes
-    const re = cloneRule(rule);
-    let m: RegExpExecArray | null;
-    // eslint-disable-next-line no-cond-assign
-    while ((m = re.pattern.exec(content)) !== null) {
+    for (const m of ruleMatches(rule, content)) {
       // Extract the matched group (if capturing group exists, use group 1; else full match)
       const raw = m[1] ?? m[0];
       const placeholder = map.get(rule, raw);
@@ -113,10 +126,7 @@ export function redact(options: RedactOptions): RedactResult {
     const replacements: { start: number; end: number; rule: RedactionRule; raw: string }[] = [];
 
     for (const rule of options.rules) {
-      const re = cloneRule(rule);
-      let m: RegExpExecArray | null;
-      // eslint-disable-next-line no-cond-assign
-      while ((m = re.pattern.exec(content)) !== null) {
+      for (const m of ruleMatches(rule, content)) {
         replacements.push({
           start: m.index,
           end: m.index + m[0].length,
