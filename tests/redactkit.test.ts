@@ -235,9 +235,12 @@ describe("redact — fixture files", () => {
     });
 
     const content = readFileSync(result.written[0], "utf8");
+    const parsed = JSON.parse(content) as { config: { token: string; server: string } };
     assert.ok(!content.includes("alice@internal.corp"));
     assert.ok(!content.includes("staging.internal.corp"));
     assert.ok(!content.includes("ghp_ABC123"));
+    assert.match(parsed.config.token, /^<REDACTED_TOKEN_\d{3}>$/);
+    assert.equal(typeof parsed.config.server, "string");
   });
 
   it("handles http-request fixture", () => {
@@ -353,6 +356,65 @@ describe("redact — with custom rules", () => {
       readFileSync(result.written[0], "utf8"),
       "<REDACTED_TICKET_001> and <REDACTED_TICKET_002>",
     );
+  });
+
+  it("preserves assignment context and reports the captured value position", () => {
+    const testDir = join(TMP, "redact-custom-capture");
+    const testFile = join(testDir, "input.txt");
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(testFile, "header\napi_key = secret-value-123\n", "utf8");
+    const rule: RedactionRule = {
+      name: "api-key",
+      description: "API key assignment",
+      pattern: /api_key\s*=\s*(secret-[a-z]+-[0-9]+)/,
+      placeholder: "API_KEY",
+      source: "custom",
+    };
+
+    const scanResult = scan({ files: [testFile], rules: [rule] });
+    assert.deepEqual(
+      { line: scanResult.matches[0].line, column: scanResult.matches[0].column },
+      { line: 2, column: 11 },
+    );
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(TMP, "redact-custom-capture-out"),
+      mapPath: join(TMP, "redact-custom-capture-map.json"),
+      rules: [rule],
+    });
+    assert.equal(readFileSync(result.written[0], "utf8"), "header\napi_key = <REDACTED_API_KEY_001>\n");
+  });
+
+  it("keeps the rightmost replacement when captured spans overlap", () => {
+    const testDir = join(TMP, "redact-custom-overlap");
+    const testFile = join(testDir, "input.txt");
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(testFile, "token=secret-value", "utf8");
+    const rules: RedactionRule[] = [
+      {
+        name: "token",
+        description: "Token value",
+        pattern: /token=(secret-value)/,
+        placeholder: "TOKEN",
+        source: "custom",
+      },
+      {
+        name: "suffix",
+        description: "Overlapping suffix",
+        pattern: /secret-(value)/,
+        placeholder: "SUFFIX",
+        source: "custom",
+      },
+    ];
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(TMP, "redact-custom-overlap-out"),
+      mapPath: join(TMP, "redact-custom-overlap-map.json"),
+      rules,
+    });
+    assert.equal(readFileSync(result.written[0], "utf8"), "token=secret-<REDACTED_SUFFIX_001>");
   });
 
   it("finishes scan and redact for a zero-length custom rule", () => {
