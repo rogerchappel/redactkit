@@ -61,6 +61,11 @@ Patterns that can match an empty string are also supported; iteration advances
 by one Unicode code point after each empty match so scans and redactions finish
 deterministically.
 
+When a pattern contains a first capture group, RedactKit scans and replaces
+only that captured value, preserving surrounding syntax such as assignment
+keys, separators, quotes, and authorization schemes. Without a capture group,
+the complete match is treated as sensitive.
+
 The redacted output keeps stable placeholders such as
 `<REDACTED_TICKET_001>`. The map file records the original value for local
 review and should not be published with shared fixtures.
