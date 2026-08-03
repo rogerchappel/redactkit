@@ -13,7 +13,8 @@ import { fingerprint } from "./fingerprint.js";
 import { cloneRule, builtInRules } from "./rules.js";
 
 function* ruleMatches(rule: RedactionRule, content: string): Generator<RegExpExecArray> {
-  const flags = rule.pattern.flags.includes("g") ? rule.pattern.flags : `${rule.pattern.flags}g`;
+  let flags = rule.pattern.flags.includes("g") ? rule.pattern.flags : `${rule.pattern.flags}g`;
+  if (!flags.includes("d")) flags += "d";
   const pattern = new RegExp(rule.pattern.source, flags);
   let match: RegExpExecArray | null;
 
@@ -29,6 +30,15 @@ function* ruleMatches(rule: RedactionRule, content: string): Generator<RegExpExe
   }
 }
 
+function sensitiveSpan(match: RegExpExecArray): { start: number; end: number; raw: string } {
+  const capture = match[1];
+  const indices = match.indices?.[capture !== undefined ? 1 : 0];
+  if (!indices) {
+    throw new Error("Unable to locate redaction match");
+  }
+  return { start: indices[0], end: indices[1], raw: capture ?? match[0] };
+}
+
 function scanFile(
   filePath: string,
   rules: RedactionRule[],
@@ -39,15 +49,14 @@ function scanFile(
 
   for (const rule of rules) {
     for (const m of ruleMatches(rule, content)) {
-      // Extract the matched group (if capturing group exists, use group 1; else full match)
-      const raw = m[1] ?? m[0];
+      const { start, raw } = sensitiveSpan(m);
       const placeholder = map.get(rule, raw);
 
       // Calculate line and column
-      const before = content.slice(0, m.index);
+      const before = content.slice(0, start);
       const lineStart = before.lastIndexOf("\n") + 1;
-      const line = content.slice(0, m.index).split("\n").length;
-      const column = m.index - lineStart + 1;
+      const line = before.split("\n").length;
+      const column = start - lineStart + 1;
 
       matches.push({
         file: filePath,
@@ -127,11 +136,12 @@ export function redact(options: RedactOptions): RedactResult {
 
     for (const rule of options.rules) {
       for (const m of ruleMatches(rule, content)) {
+        const span = sensitiveSpan(m);
         replacements.push({
-          start: m.index,
-          end: m.index + m[0].length,
+          start: span.start,
+          end: span.end,
           rule,
-          raw: m[1] ?? m[0],
+          raw: span.raw,
         });
       }
     }
