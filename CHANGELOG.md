@@ -9,6 +9,11 @@ format and uses semantic versioning when versioned releases are published.
 
 - Added release-readiness validation for package metadata, CI placeholder cleanup, and package smoke coverage.
 
+### Changed
+
+- Tagged releases now publish the exact package version to npm with provenance, verify registry availability, and idempotently create or recover the matching GitHub release.
+- Release-readiness validation now rejects workflows missing tag/version matching, trusted publishing, provenance, exact-version verification, or GitHub release recovery.
+
 ### Added
 
 - Added package smoke validation that proves CLI entrypoints, type declarations, docs, and custom-rule examples are included in the npm tarball.
