@@ -32,7 +32,7 @@
     "smoke": "bash scripts/smoke.sh",
     "package:smoke": "npm run build && node scripts/package-smoke.mjs",
     "release:check": "npm run check && npm test && npm run smoke && npm run package:smoke",
-    "release:readiness": "node scripts/validate-release-readiness.mjs"
+    "release:readiness": "node --test scripts/validate-release-readiness.test.mjs && node scripts/validate-release-readiness.mjs"
   },
   "keywords": [
     "redaction",
