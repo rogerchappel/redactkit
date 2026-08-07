@@ -2,7 +2,7 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, rmSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { resolve, join, relative } from "node:path";
 import { scan, redact, builtInRules, cloneRule, fingerprint } from "../src/index.js";
 import { PlaceholderMap } from "../src/placeholders.js";
 import type { RedactionRule, RedactionMatch, PlaceholderRecord } from "../src/types.js";
@@ -293,6 +293,32 @@ describe("redact — fixture files", () => {
     assert.match(readFileSync(firstOutput, "utf8"), /^first: <REDACTED_EMAIL_001>$/m);
     assert.match(readFileSync(secondOutput, "utf8"), /^second: <REDACTED_EMAIL_002>$/m);
   });
+
+  for (const collision of ["output", "map"] as const) {
+    it(`rejects a resolved ${collision} path that aliases an input before writing`, () => {
+      const testDir = join(TMP, `redact-input-${collision}-collision`);
+      const input = join(testDir, "input.txt");
+      const outDir = collision === "output" ? testDir : join(testDir, "out");
+      const mapPath = collision === "map" ? resolve(testDir, ".", "input.txt") : join(testDir, "map.json");
+      const original = "contact: alice@example.com\n";
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(input, original, "utf8");
+
+      assert.throws(
+        () =>
+          redact({
+            files: [relative(process.cwd(), input)],
+            outDir,
+            mapPath,
+            rules: allRules.map(cloneRule),
+          }),
+        new RegExp(`${collision} path aliases an input file`, "i"),
+      );
+      assert.equal(readFileSync(input, "utf8"), original);
+      assert.equal(existsSync(join(testDir, "out")), false);
+      assert.equal(existsSync(join(testDir, "map.json")), false);
+    });
+  }
 });
 
 describe("redact — with custom rules", () => {
@@ -607,4 +633,31 @@ describe("cli — option validation", () => {
     assert.ok(existsSync(join(outDir, "sample.log")));
     assert.ok(existsSync(mapPath));
   });
+
+  for (const collision of ["output", "map"] as const) {
+    it(`rejects a ${collision} path collision atomically`, () => {
+      const testDir = join(TMP, `cli-${collision}-collision`);
+      const input = join(testDir, "input.txt");
+      const outDir = collision === "output" ? testDir : join(testDir, "out");
+      const mapPath = collision === "map" ? input : join(testDir, "map.json");
+      const original = "contact: alice@example.com\n";
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(input, original, "utf8");
+
+      const result = runCli([
+        "redact",
+        relative(process.cwd(), input),
+        "--out-dir",
+        outDir,
+        "--map",
+        mapPath,
+      ]);
+
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, new RegExp(`${collision} path aliases an input file`, "i"));
+      assert.equal(readFileSync(input, "utf8"), original);
+      assert.equal(existsSync(join(testDir, "out")), false);
+      assert.equal(existsSync(join(testDir, "map.json")), false);
+    });
+  }
 });
