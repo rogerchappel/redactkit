@@ -37,11 +37,62 @@ jobs:
         run: node /tmp/releasebox/bin/releasebox.js check .
       - name: Run release checks
         run: npm run release:check
-      - name: Build package
-        run: npm pack
+      - name: Validate release tag
+        id: package
+        run: |
+          set -euo pipefail
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          EXPECTED_TAG="v${PACKAGE_VERSION}"
+          if [ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version ${PACKAGE_VERSION}." >&2
+            exit 1
+          fi
+          echo "name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Publish package with provenance
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          set -euo pipefail
+          if PUBLISHED_VERSION="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version 2>/dev/null)"; then
+            test "${PUBLISHED_VERSION}" = "${PACKAGE_VERSION}"
+            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published; continuing recovery."
+          else
+            npm publish --provenance --access public
+          fi
+      - name: Verify exact npm version
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 12); do
+            if PUBLISHED_VERSION="$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version 2>/dev/null)" && [ "${PUBLISHED_VERSION}" = "${PACKAGE_VERSION}" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "${PACKAGE_NAME}@${PACKAGE_VERSION} was not readable from npm after publication." >&2
+          exit 1
+      - name: Build release artifact
+        id: artifact
+        run: |
+          set -euo pipefail
+          TARBALL="$(npm pack --json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => console.log(JSON.parse(input)[0].filename));")"
+          echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
       - name: Generate release notes
         run: node /tmp/releasebox/bin/releasebox.js notes . > RELEASE_NOTES.md
-      - name: Create GitHub release
+      - name: Create or recover GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --notes-file RELEASE_NOTES.md *.tgz
+          TARBALL: ${{ steps.artifact.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" --notes-file RELEASE_NOTES.md
+            gh release upload "${GITHUB_REF_NAME}" "${TARBALL}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" --notes-file RELEASE_NOTES.md "${TARBALL}"
+          fi
