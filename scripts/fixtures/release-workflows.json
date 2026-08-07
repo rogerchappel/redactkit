@@ -1,0 +1,10 @@
+{
+  "valid": "name: Release\non:\n  push:\n    tags: ['v*.*.*']\npermissions:\n  contents: write\n  id-token: write\njobs:\n  release:\n    steps:\n      - run: npm run release:check\n      - run: test \"$GITHUB_REF_NAME\" = \"v$(node -p \\\"require('./package.json').version\\\")\"\n      - run: npm publish --provenance --access public\n      - run: npm view \"${PACKAGE_NAME}@${PACKAGE_VERSION}\" version\n      - run: |\n          if gh release view \"$GITHUB_REF_NAME\"; then\n            gh release edit \"$GITHUB_REF_NAME\" --notes-file notes.md\n            gh release upload \"$GITHUB_REF_NAME\" package.tgz --clobber\n          else\n            gh release create \"$GITHUB_REF_NAME\" package.tgz\n          fi\n",
+  "broken": {
+    "publish": "npm pack",
+    "tag": "echo no-tag-check",
+    "provenance": "npm publish --access public",
+    "verification": "echo published",
+    "recovery": "gh release create \"$GITHUB_REF_NAME\" package.tgz"
+  }
+}
