@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname, isAbsolute, relative, join, sep } from "node:path";
+import { resolve, dirname, isAbsolute, relative, sep } from "node:path";
 import type {
   RedactionRule,
   RedactionMatch,
@@ -92,7 +92,7 @@ function resolveOutputPaths(filePaths: string[], outDir: string): string[] {
     }
   }
 
-  const outFiles = filePaths.map((filePath) => join(outDir, relative(commonParent, filePath)));
+  const outFiles = filePaths.map((filePath) => resolve(outDir, relative(commonParent, filePath)));
   if (new Set(outFiles).size !== outFiles.length) {
     throw new Error("Input files must resolve to distinct output paths");
   }
@@ -120,6 +120,17 @@ export function redact(options: RedactOptions): RedactResult {
   const written: string[] = [];
   const filePaths = options.files.map((file) => resolve(file));
   const outFiles = resolveOutputPaths(filePaths, options.outDir);
+  const mapPath = resolve(options.mapPath);
+  const inputPaths = new Set(filePaths);
+
+  for (const outFile of outFiles) {
+    if (inputPaths.has(outFile)) {
+      throw new Error(`Output path aliases an input file: ${outFile}`);
+    }
+  }
+  if (inputPaths.has(mapPath)) {
+    throw new Error(`Map path aliases an input file: ${mapPath}`);
+  }
 
   mkdirSync(options.outDir, { recursive: true });
 
@@ -176,7 +187,6 @@ export function redact(options: RedactOptions): RedactResult {
   }
 
   // Write map
-  const mapPath = resolve(options.mapPath);
   mkdirSync(dirname(mapPath), { recursive: true });
   writeFileSync(mapPath, JSON.stringify(map.toJSON(), null, 2) + "\n", "utf8");
 
