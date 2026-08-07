@@ -70,6 +70,11 @@ The redacted output keeps stable placeholders such as
 `<REDACTED_TICKET_001>`. The map file records the original value for local
 review and should not be published with shared fixtures.
 
+RedactKit never overwrites an input file. Before creating output directories or
+writing files, redaction fails if a resolved output or map path aliases any
+input path, including when relative and absolute spellings refer to the same
+path. Choose a separate `--out-dir` and `--map` location.
+
 ## Verify
 
 ```sh
