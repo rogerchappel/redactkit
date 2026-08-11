@@ -319,6 +319,30 @@ describe("redact — fixture files", () => {
       assert.equal(existsSync(join(testDir, "map.json")), false);
     });
   }
+
+  it("rejects a map path that aliases a generated output before writing", () => {
+    const testDir = join(TMP, "redact-map-output-collision");
+    const inputDir = join(testDir, "input");
+    const input = join(inputDir, "map.json");
+    const outDir = join(testDir, "out");
+    const mapPath = join(outDir, "map.json");
+    const original = '{"contact":"alice@example.com"}\n';
+    mkdirSync(inputDir, { recursive: true });
+    writeFileSync(input, original, "utf8");
+
+    assert.throws(
+      () =>
+        redact({
+          files: [input],
+          outDir,
+          mapPath,
+          rules: allRules.map(cloneRule),
+        }),
+      /map path aliases a generated output file/i,
+    );
+    assert.equal(readFileSync(input, "utf8"), original);
+    assert.equal(existsSync(outDir), false);
+  });
 });
 
 describe("redact — with custom rules", () => {
@@ -660,4 +684,22 @@ describe("cli — option validation", () => {
       assert.equal(existsSync(join(testDir, "map.json")), false);
     });
   }
+
+  it("rejects a map path that aliases a generated output atomically", () => {
+    const testDir = join(TMP, "cli-map-output-collision");
+    const inputDir = join(testDir, "input");
+    const input = join(inputDir, "map.json");
+    const outDir = join(testDir, "out");
+    const mapPath = join(outDir, "map.json");
+    const original = '{"contact":"alice@example.com"}\n';
+    mkdirSync(inputDir, { recursive: true });
+    writeFileSync(input, original, "utf8");
+
+    const result = runCli(["redact", input, "--out-dir", outDir, "--map", mapPath]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /map path aliases a generated output file/i);
+    assert.equal(readFileSync(input, "utf8"), original);
+    assert.equal(existsSync(outDir), false);
+  });
 });
