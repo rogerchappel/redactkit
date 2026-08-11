@@ -81,6 +81,7 @@ review and should not be published with shared fixtures.
 RedactKit never overwrites an input file. Before creating output directories or
 writing files, redaction fails if a resolved output or map path aliases any
 input path, including when relative and absolute spellings refer to the same
+path. The `--map` path also must not collide with any generated redacted output
 path. Choose a separate `--out-dir` and `--map` location.
 
 ## Verify
