@@ -5,6 +5,12 @@ import { fileURLToPath } from 'node:url';
 export function validateReleaseReadiness(root = process.cwd()) {
   const packagePath = path.join(root, 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+  const readmePath = path.join(root, 'README.md');
+  const releaseboxPath = path.join(root, 'releasebox.config.json');
+  const readme = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
+  const releasebox = fs.existsSync(releaseboxPath)
+    ? JSON.parse(fs.readFileSync(releaseboxPath, 'utf8'))
+    : {};
   const scripts = packageJson.scripts ?? {};
   const failures = [];
   const requireField = (condition, message) => {
@@ -15,6 +21,11 @@ export function validateReleaseReadiness(root = process.cwd()) {
   requireField(Array.isArray(packageJson.files) && packageJson.files.length > 0, 'package.json must declare a non-empty files allowlist');
   requireField(scripts['package:smoke'], 'package.json scripts must include package:smoke');
   requireField(scripts['release:check'], 'package.json scripts must include release:check');
+  requireField(Boolean(readme), 'README.md must document installation');
+  requireField(
+    /git clone[^\n]*[\s\S]*npm ci[\s\S]*npm run build/.test(readme),
+    'README.md must document a verifiable source-install fallback (git clone, npm ci, npm run build)',
+  );
 
   const workflowDir = path.join(root, '.github', 'workflows');
   const workflowFiles = fs.existsSync(workflowDir)
@@ -37,6 +48,18 @@ export function validateReleaseReadiness(root = process.cwd()) {
   requireField(Boolean(releaseWorkflow), 'a release workflow must run for semantic version tags');
   requireField(/id-token:\s*write/.test(releaseWorkflow), 'release workflow must grant id-token: write for npm trusted publishing');
   requireField(/npm publish[^\n]*--provenance/.test(releaseWorkflow), 'release workflow must publish to npm with provenance');
+  const workflowPublishesNpm = /npm publish(?:\s|$)/.test(releaseWorkflow);
+  const releaseboxPublishesNpm = releasebox.release?.publishNpm === true;
+  requireField(
+    workflowPublishesNpm === releaseboxPublishesNpm,
+    'releasebox.config.json release.publishNpm must agree with the release workflow',
+  );
+  if (/npm install\s+(?:--[^\s]+\s+)*@?[^\s`]+/.test(readme)) {
+    requireField(
+      releaseboxPublishesNpm && workflowPublishesNpm,
+      'README.md must not advertise npm installation while npm publishing is disabled',
+    );
+  }
   requireField(/GITHUB_REF_NAME[\s\S]*package[^\n]*version|package[^\n]*version[\s\S]*GITHUB_REF_NAME/.test(releaseWorkflow), 'release workflow must validate the tag against package.json version');
   requireField(/npm view[\s\S]*@?[^\s"']+@\$?\{?[^\s"'}]+\}?[\s\S]*version/.test(releaseWorkflow), 'release workflow must verify the exact published package version');
   requireField(/gh release view[\s\S]*gh release (?:edit|upload)|gh release view[\s\S]*gh release create/.test(releaseWorkflow), 'release workflow must recover an existing GitHub release without duplicating it');
