@@ -7,7 +7,7 @@ import { validateReleaseReadiness } from './validate-release-readiness.mjs';
 
 const fixtures = JSON.parse(fs.readFileSync(new URL('./fixtures/release-workflows.json', import.meta.url), 'utf8'));
 
-function fixtureRoot(workflow) {
+function fixtureRoot(workflow, { publishNpm = true, readme } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'redactkit-release-readiness-'));
   fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
@@ -15,6 +15,20 @@ function fixtureRoot(workflow) {
     files: ['dist'],
     scripts: { 'package:smoke': 'true', 'release:check': 'true' },
   }));
+  fs.writeFileSync(path.join(root, 'releasebox.config.json'), JSON.stringify({
+    release: { publishNpm },
+  }));
+  fs.writeFileSync(path.join(root, 'README.md'), readme ?? [
+    '## Install',
+    '',
+    'Install from source:',
+    '',
+    '```sh',
+    'git clone https://github.com/example/redactkit.git',
+    'npm ci',
+    'npm run build',
+    '```',
+  ].join('\n'));
   fs.writeFileSync(path.join(root, '.github', 'workflows', 'release.yml'), workflow);
   return root;
 }
@@ -39,3 +53,26 @@ for (const [guarantee, replacement] of Object.entries(fixtures.broken)) {
     assert.notDeepEqual(validateReleaseReadiness(root), []);
   });
 }
+
+test('rejects npm publishing when ReleaseBox disables it', (t) => {
+  const root = fixtureRoot(fixtures.valid, { publishNpm: false });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  assert.match(validateReleaseReadiness(root).join('\n'), /publishNpm/);
+});
+
+test('rejects an advertised npm install when npm publishing is disabled', (t) => {
+  const root = fixtureRoot(fixtures.valid, {
+    publishNpm: false,
+    readme: '## Install\n\n```sh\nnpm install @rogerchappel/redactkit\n```',
+  });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  assert.match(validateReleaseReadiness(root).join('\n'), /README.*npm/);
+});
+
+test('requires a documented source-install fallback', (t) => {
+  const root = fixtureRoot(fixtures.valid, {
+    readme: '## Install\n\n```sh\nnpm install @rogerchappel/redactkit\n```',
+  });
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  assert.match(validateReleaseReadiness(root).join('\n'), /source-install fallback/);
+});
