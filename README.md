@@ -4,22 +4,21 @@ Local-first CLI for scrubbing secrets and private details from logs, transcripts
 
 ## Status
 
-This is an early v0.1.0 CLI and library for deterministic local scanning and redaction.
+This is an early v0.1.0 CLI and library for deterministic local scanning and redaction. No version has been published to npm or GitHub Releases yet.
 
 ## Install
 
-Install the published CLI and library from npm:
+Until the first version is published, install the CLI and library from the source repository:
 
 ```sh
-npm install @rogerchappel/redactkit
-```
-
-To work from a source checkout instead, install dependencies and build locally:
-
-```sh
+git clone https://github.com/rogerchappel/redactkit.git
+cd redactkit
 npm ci
 npm run build
+npm link
 ```
+
+After `npm link`, run `redactkit` as a CLI or import the library from the checkout. `npm ci` uses the committed lockfile, and `npm run build` creates the executable and library files under `dist/`.
 
 ## Use
 
@@ -97,11 +96,11 @@ npm run release:check
 
 ## Release
 
-Maintainers publish by pushing a semantic-version tag that exactly matches
+The repository is configured for npm trusted publishing, but npm installation must not be advertised until the first package is actually available. Maintainers publish by pushing a semantic-version tag that exactly matches
 `package.json` (for example, version `0.1.0` uses tag `v0.1.0`). The release
 workflow uses npm trusted publishing with provenance, verifies that exact
 version on the registry, and creates or repairs the matching GitHub release.
-Re-running the workflow is safe when npm already contains that version.
+Re-running the workflow is safe when npm already contains that version. The source-install steps above remain the verified fallback before and after publication.
 
 ## Limitations
 

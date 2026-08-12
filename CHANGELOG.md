@@ -11,6 +11,7 @@ format and uses semantic versioning when versioned releases are published.
 
 ### Changed
 
+- Installation guidance now names the source checkout until the first npm package exists, and release checks keep README claims aligned with npm publishing configuration.
 - Refreshed development dependency locks, including `tsx` and `esbuild`, to incorporate current maintenance and security fixes.
 - Tagged releases now publish the exact package version to npm with provenance, verify registry availability, and idempotently create or recover the matching GitHub release.
 - Release-readiness validation now rejects workflows missing tag/version matching, trusted publishing, provenance, exact-version verification, or GitHub release recovery.

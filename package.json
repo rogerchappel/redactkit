@@ -31,7 +31,7 @@
     "test": "npm run build && node --test dist/tests/*.test.js",
     "smoke": "bash scripts/smoke.sh",
     "package:smoke": "npm run build && node scripts/package-smoke.mjs",
-    "release:check": "npm run check && npm test && npm run smoke && npm run package:smoke",
+    "release:check": "npm run check && npm test && npm run smoke && npm run package:smoke && npm run release:readiness",
     "release:readiness": "node --test scripts/validate-release-readiness.test.mjs && node scripts/validate-release-readiness.mjs"
   },
   "keywords": [
