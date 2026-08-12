@@ -131,6 +131,9 @@ export function redact(options: RedactOptions): RedactResult {
   if (inputPaths.has(mapPath)) {
     throw new Error(`Map path aliases an input file: ${mapPath}`);
   }
+  if (outFiles.includes(mapPath)) {
+    throw new Error(`Map path aliases a generated output file: ${mapPath}`);
+  }
 
   mkdirSync(options.outDir, { recursive: true });
 
