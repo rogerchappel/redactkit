@@ -11,10 +11,12 @@ function fixtureRoot(workflow, { publishNpm = true, readme } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'redactkit-release-readiness-'));
   fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+    packageManager: 'pnpm@10.11.0',
     repository: 'example/redactkit',
     files: ['dist'],
     scripts: { 'package:smoke': 'true', 'release:check': 'true' },
   }));
+  fs.writeFileSync(path.join(root, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n');
   fs.writeFileSync(path.join(root, 'releasebox.config.json'), JSON.stringify({
     release: { publishNpm },
   }));
@@ -25,8 +27,8 @@ function fixtureRoot(workflow, { publishNpm = true, readme } = {}) {
     '',
     '```sh',
     'git clone https://github.com/example/redactkit.git',
-    'npm ci',
-    'npm run build',
+    'pnpm install --frozen-lockfile',
+    'pnpm run build',
     '```',
   ].join('\n'));
   fs.writeFileSync(path.join(root, '.github', 'workflows', 'release.yml'), workflow);
@@ -75,4 +77,17 @@ test('requires a documented source-install fallback', (t) => {
   });
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   assert.match(validateReleaseReadiness(root).join('\n'), /source-install fallback/);
+});
+
+test('rejects conflicting package manager lockfiles', (t) => {
+  const root = fixtureRoot(fixtures.valid);
+  fs.writeFileSync(path.join(root, 'package-lock.json'), '{}');
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  assert.match(validateReleaseReadiness(root).join('\n'), /package-lock/);
+});
+
+test('rejects workflow project installs that return to npm', (t) => {
+  const root = fixtureRoot(`${fixtures.valid}\n      - run: npm ci\n`);
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  assert.match(validateReleaseReadiness(root).join('\n'), /project dependencies with npm/);
 });
