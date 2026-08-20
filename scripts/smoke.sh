@@ -22,7 +22,7 @@ expect_exit() {
 
 # Build
 echo "Building..."
-npm run build >/dev/null
+pnpm run build >/dev/null
 
 # Scan should find secrets in fixture
 echo "Scanning sample.log..."

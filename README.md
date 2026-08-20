@@ -13,12 +13,13 @@ Until the first version is published, install the CLI and library from the sourc
 ```sh
 git clone https://github.com/rogerchappel/redactkit.git
 cd redactkit
-npm ci
-npm run build
-npm link
+corepack enable
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm link --global
 ```
 
-After `npm link`, run `redactkit` as a CLI or import the library from the checkout. `npm ci` uses the committed lockfile, and `npm run build` creates the executable and library files under `dist/`.
+After `pnpm link --global`, run `redactkit` as a CLI or import the library from the checkout. pnpm is the repository's authoritative package manager; its version is pinned in `package.json`, and `pnpm install --frozen-lockfile` uses the committed `pnpm-lock.yaml`. `pnpm run build` creates the executable and library files under `dist/`.
 
 ## Use
 
@@ -86,12 +87,12 @@ path. Choose a separate `--out-dir` and `--map` location.
 ## Verify
 
 ```sh
-npm run build
+pnpm run build
 npm test
-npm run smoke
-npm run package:smoke
-npm run release:readiness
-npm run release:check
+pnpm run smoke
+pnpm run package:smoke
+pnpm run release:readiness
+pnpm run release:check
 ```
 
 ## Release
