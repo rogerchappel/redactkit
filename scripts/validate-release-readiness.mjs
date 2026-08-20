@@ -21,10 +21,13 @@ export function validateReleaseReadiness(root = process.cwd()) {
   requireField(Array.isArray(packageJson.files) && packageJson.files.length > 0, 'package.json must declare a non-empty files allowlist');
   requireField(scripts['package:smoke'], 'package.json scripts must include package:smoke');
   requireField(scripts['release:check'], 'package.json scripts must include release:check');
+  requireField(/^pnpm@10\.11\.0$/.test(packageJson.packageManager ?? ''), 'package.json must declare the authoritative pnpm@10.11.0 package manager');
+  requireField(fs.existsSync(path.join(root, 'pnpm-lock.yaml')), 'repository must commit pnpm-lock.yaml');
+  requireField(!fs.existsSync(path.join(root, 'package-lock.json')), 'repository must not commit conflicting package-lock.json');
   requireField(Boolean(readme), 'README.md must document installation');
   requireField(
-    /git clone[^\n]*[\s\S]*npm ci[\s\S]*npm run build/.test(readme),
-    'README.md must document a verifiable source-install fallback (git clone, npm ci, npm run build)',
+    /git clone[^\n]*[\s\S]*pnpm install --frozen-lockfile[\s\S]*pnpm run build/.test(readme),
+    'README.md must document a verifiable source-install fallback (git clone, frozen pnpm install, pnpm run build)',
   );
 
   const workflowDir = path.join(root, '.github', 'workflows');
@@ -42,7 +45,8 @@ export function validateReleaseReadiness(root = process.cwd()) {
   }
 
   const combined = workflows.map(({ contents }) => contents).join('\n');
-  requireField(/release:check/.test(combined), 'CI workflows must run npm run release:check');
+  requireField(/pnpm run release:check/.test(combined), 'CI workflows must run pnpm run release:check');
+  requireField(!/(?:^|\n)\s*(?:-\s*)?run:\s*npm (?:ci|install)(?:\s|$)/m.test(combined), 'workflows must not install project dependencies with npm');
 
   const releaseWorkflow = workflows.find(({ contents }) => /tags:\s*[\s\S]*?v\*\.\*\.\*/.test(contents))?.contents ?? '';
   requireField(Boolean(releaseWorkflow), 'a release workflow must run for semantic version tags');

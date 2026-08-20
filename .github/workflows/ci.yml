@@ -19,6 +19,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
       - name: Validate required project files
         run: |
           set -euo pipefail
@@ -57,11 +66,6 @@ jobs:
             exit 0
           fi
 
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-          npm run release:readiness
-          npm run release:check
+          pnpm install --frozen-lockfile
+          pnpm run release:readiness
+          pnpm run release:check
