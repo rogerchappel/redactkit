@@ -78,6 +78,12 @@ The redacted output keeps stable placeholders such as
 `<REDACTED_TICKET_001>`. The map file records the original value for local
 review and should not be published with shared fixtures.
 
+`scan` reports every detected rule match. `redact` reports and counts only the
+non-overlapping replacements it actually applies, and its map contains only
+those applied values. When rules overlap, the match starting furthest to the
+right wins; matches at the same position prefer the longer span, then the rule
+listed first. This selection is deterministic for both library and CLI use.
+
 RedactKit never overwrites an input file. Before creating output directories or
 writing files, redaction fails if a resolved output or map path aliases any
 input path, including when relative and absolute spellings refer to the same
