@@ -141,10 +141,6 @@ export function redact(options: RedactOptions): RedactResult {
     const content = readFileSync(filePath, "utf8");
     let output = content;
 
-    // Collect matches
-    const fileMatches = scanFile(filePath, options.rules, map);
-    allMatches.push(...fileMatches);
-
     // Apply redactions — sort by position (reversed) so replacements don't shift indices
     const replacements: { start: number; end: number; rule: RedactionRule; raw: string }[] = [];
 
@@ -176,11 +172,28 @@ export function redact(options: RedactOptions): RedactResult {
       }
     }
 
-    // Apply replacements
-    for (const r of filtered) {
-      const placeholder = map.get(r.rule, r.raw);
+    // Allocate placeholders in source order, then apply in reverse so offsets stay stable.
+    const appliedMatches: RedactionMatch[] = [];
+    const selected = filtered.reverse().map((replacement) => ({
+      replacement,
+      placeholder: map.get(replacement.rule, replacement.raw),
+    }));
+    for (const { replacement: r, placeholder } of selected) {
+      const before = content.slice(0, r.start);
+      const lineStart = before.lastIndexOf("\n") + 1;
+      appliedMatches.push({
+        file: filePath,
+        line: before.split("\n").length,
+        column: r.start - lineStart + 1,
+        rule: r.rule.name,
+        placeholder,
+        fingerprint: fingerprint(r.raw),
+      });
+    }
+    for (const { replacement: r, placeholder } of [...selected].reverse()) {
       output = output.slice(0, r.start) + placeholder + output.slice(r.end);
     }
+    allMatches.push(...appliedMatches);
 
     // Write redacted file
     const outFile = outFiles[index];
