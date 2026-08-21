@@ -495,6 +495,52 @@ describe("redact — with custom rules", () => {
       "<REDACTED_BOUNDARY_001>a<REDACTED_BOUNDARY_001>b",
     );
   });
+
+  it("reports and maps only the winning rule for identical spans", () => {
+    const testDir = join(TMP, "redact-identical-overlap");
+    mkdirSync(testDir, { recursive: true });
+    const testFile = join(testDir, "value.txt");
+    writeFileSync(testFile, "abc123", "utf8");
+    const rules: RedactionRule[] = [
+      { name: "one", description: "first", pattern: /abc123/g, placeholder: "ONE", source: "custom" },
+      { name: "two", description: "second", pattern: /abc123/g, placeholder: "TWO", source: "custom" },
+    ];
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(testDir, "out"),
+      mapPath: join(testDir, "map.json"),
+      rules,
+    });
+
+    assert.equal(readFileSync(result.written[0], "utf8"), "<REDACTED_ONE_001>");
+    assert.deepEqual(result.matches.map((match) => match.rule), ["one"]);
+    const map = JSON.parse(readFileSync(result.mapPath, "utf8"));
+    assert.deepEqual(map.entries.map((entry: PlaceholderRecord) => entry.rule), ["one"]);
+  });
+
+  it("reports and maps only deterministic winners for partial overlaps", () => {
+    const testDir = join(TMP, "redact-partial-overlap");
+    mkdirSync(testDir, { recursive: true });
+    const testFile = join(testDir, "value.txt");
+    writeFileSync(testFile, "abc123xyz", "utf8");
+    const rules: RedactionRule[] = [
+      { name: "left", description: "left", pattern: /abc123/g, placeholder: "LEFT", source: "custom" },
+      { name: "right", description: "right", pattern: /123xyz/g, placeholder: "RIGHT", source: "custom" },
+    ];
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(testDir, "out"),
+      mapPath: join(testDir, "map.json"),
+      rules,
+    });
+
+    assert.equal(readFileSync(result.written[0], "utf8"), "abc<REDACTED_RIGHT_001>");
+    assert.deepEqual(result.matches.map((match) => match.rule), ["right"]);
+    const map = JSON.parse(readFileSync(result.mapPath, "utf8"));
+    assert.deepEqual(map.entries.map((entry: PlaceholderRecord) => entry.rule), ["right"]);
+  });
 });
 
 describe("stable mapping — same value gets same placeholder", () => {
@@ -701,5 +747,28 @@ describe("cli — option validation", () => {
     assert.match(result.stderr, /map path aliases a generated output file/i);
     assert.equal(readFileSync(input, "utf8"), original);
     assert.equal(existsSync(outDir), false);
+  });
+
+  it("prints the number of replacements actually applied", () => {
+    const testDir = join(TMP, "cli-overlap");
+    const outDir = join(testDir, "out");
+    const mapPath = join(testDir, "map.json");
+    const inputPath = join(testDir, "input.txt");
+    const rulesPath = join(testDir, "rules.json");
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(inputPath, "abc123", "utf8");
+    writeFileSync(rulesPath, JSON.stringify({ rules: [
+      { name: "one", pattern: "abc123", placeholder: "ONE" },
+      { name: "two", pattern: "abc123", placeholder: "TWO" },
+    ] }), "utf8");
+
+    const output = execFileSync(process.execPath, [
+      "dist/src/cli.js", "redact", inputPath, "--rules", rulesPath,
+      "--out-dir", outDir, "--map", mapPath,
+    ], { encoding: "utf8" });
+
+    assert.match(output, /Redacted 1 match\(es\)/);
+    const map = JSON.parse(readFileSync(mapPath, "utf8"));
+    assert.equal(map.entries.length, 1);
   });
 });
