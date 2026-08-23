@@ -96,19 +96,69 @@ function parseArgs(argv: string[]): { command: string; files: string[]; flags: R
 }
 
 function loadCustomRules(path: string): RedactionRule[] {
-  const content = readFileSync(path, "utf8");
-  const parsed = JSON.parse(content) as { rules?: SerializableRule[] };
-  if (!parsed.rules || !Array.isArray(parsed.rules)) {
-    throw new Error(`Invalid rule file: expected { "rules": [...] } in ${path}`);
+  let content: string;
+  try {
+    content = readFileSync(path, "utf8");
+  } catch {
+    throw new Error(`Invalid rule file ${path}: could not read file`);
   }
 
-  return parsed.rules.map((r) => ({
-    name: r.name,
-    description: r.description ?? "Custom rule from file",
-    pattern: new RegExp(r.pattern, r.flags ?? "g"),
-    placeholder: r.placeholder ?? "CUSTOM",
-    source: "custom" as const,
-  }));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error(`Invalid rule file ${path}: malformed JSON`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !("rules" in parsed) || !Array.isArray(parsed.rules)) {
+    throw new Error(`Invalid rule file ${path}: expected { "rules": [...] }`);
+  }
+
+  return parsed.rules.map((value, index) => {
+    const field = `rules[${index}]`;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`Invalid rule file ${path}: ${field} must be an object`);
+    }
+
+    const rule = value as Partial<SerializableRule>;
+    if (typeof rule.name !== "string" || rule.name.trim() === "") {
+      throw new Error(`Invalid rule file ${path}: ${field}.name must be a non-empty string`);
+    }
+    if (typeof rule.pattern !== "string" || rule.pattern.length === 0) {
+      throw new Error(`Invalid rule file ${path}: ${field}.pattern must be a non-empty string`);
+    }
+    if (rule.flags !== undefined && typeof rule.flags !== "string") {
+      throw new Error(`Invalid rule file ${path}: ${field}.flags must be a string`);
+    }
+    if (rule.placeholder !== undefined && (typeof rule.placeholder !== "string" || rule.placeholder.trim() === "")) {
+      throw new Error(`Invalid rule file ${path}: ${field}.placeholder must be a non-empty string`);
+    }
+    if (rule.description !== undefined && typeof rule.description !== "string") {
+      throw new Error(`Invalid rule file ${path}: ${field}.description must be a string`);
+    }
+
+    const flags = rule.flags ?? "g";
+    try {
+      new RegExp("", flags);
+    } catch {
+      throw new Error(`Invalid rule file ${path}: ${field} has invalid regular expression flags`);
+    }
+
+    let pattern: RegExp;
+    try {
+      pattern = new RegExp(rule.pattern, flags);
+    } catch {
+      throw new Error(`Invalid rule file ${path}: ${field} has invalid regular expression`);
+    }
+
+    return {
+      name: rule.name,
+      description: rule.description ?? "Custom rule from file",
+      pattern,
+      placeholder: rule.placeholder ?? "CUSTOM",
+      source: "custom" as const,
+    };
+  });
 }
 
 async function main() {

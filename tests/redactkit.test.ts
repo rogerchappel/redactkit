@@ -569,6 +569,62 @@ describe("stable mapping — same value gets same placeholder", () => {
 });
 
 describe("cli — custom rule files", () => {
+  function runWithRuleFile(testName: string, ruleFileContent: string) {
+    const testDir = join(TMP, `cli-invalid-rules-${testName}`);
+    const input = join(testDir, "input.txt");
+    const rules = join(testDir, "rules.json");
+    const outDir = join(testDir, "out");
+    const mapPath = join(testDir, "map.json");
+    rmSync(testDir, { recursive: true, force: true });
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(input, "hello", "utf8");
+    writeFileSync(rules, ruleFileContent, "utf8");
+
+    const result = spawnSync(
+      process.execPath,
+      ["dist/src/cli.js", "redact", input, "--rules", rules, "--out-dir", outDir, "--map", mapPath],
+      { encoding: "utf8" },
+    );
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.equal(existsSync(outDir), false);
+    assert.equal(existsSync(mapPath), false);
+    return result.stderr;
+  }
+
+  for (const testCase of [
+    { name: "entry-object", value: { rules: [null] }, diagnostic: /rules\[0\] must be an object/ },
+    { name: "missing-name", value: { rules: [{ pattern: "hello" }] }, diagnostic: /rules\[0\]\.name must be a non-empty string/ },
+    { name: "empty-name", value: { rules: [{ name: " ", pattern: "hello" }] }, diagnostic: /rules\[0\]\.name must be a non-empty string/ },
+    { name: "pattern-type", value: { rules: [{ name: "test", pattern: 42 }] }, diagnostic: /rules\[0\]\.pattern must be a non-empty string/ },
+    { name: "empty-pattern", value: { rules: [{ name: "test", pattern: "" }] }, diagnostic: /rules\[0\]\.pattern must be a non-empty string/ },
+    { name: "flags-type", value: { rules: [{ name: "test", pattern: "hello", flags: 1 }] }, diagnostic: /rules\[0\]\.flags must be a string/ },
+    { name: "placeholder", value: { rules: [{ name: "test", pattern: "hello", placeholder: "" }] }, diagnostic: /rules\[0\]\.placeholder must be a non-empty string/ },
+    { name: "description", value: { rules: [{ name: "test", pattern: "hello", description: false }] }, diagnostic: /rules\[0\]\.description must be a string/ },
+  ]) {
+    it(`rejects invalid ${testCase.name} before writing outputs`, () => {
+      const stderr = runWithRuleFile(testCase.name, JSON.stringify(testCase.value));
+      assert.match(stderr, /Invalid rule file .*rules\.json:/);
+      assert.match(stderr, testCase.diagnostic);
+    });
+  }
+
+  for (const testCase of [
+    { name: "regex", value: { rules: [{ name: "test", pattern: "[" }] }, diagnostic: /rules\[0\] has invalid regular expression/ },
+    { name: "flags", value: { rules: [{ name: "test", pattern: "hello", flags: "gg" }] }, diagnostic: /rules\[0\] has invalid regular expression flags/ },
+  ]) {
+    it(`rejects invalid ${testCase.name} construction before writing outputs`, () => {
+      const stderr = runWithRuleFile(testCase.name, JSON.stringify(testCase.value));
+      assert.match(stderr, testCase.diagnostic);
+    });
+  }
+
+  it("reports malformed rule JSON without writing outputs", () => {
+    const stderr = runWithRuleFile("json", '{"rules": [}');
+    assert.match(stderr, /Invalid rule file .*rules\.json: malformed JSON/);
+  });
+
   it("redacts example support tickets through --rules", () => {
     const outDir = join(TMP, "cli-custom-out");
     const mapPath = join(TMP, "cli-custom-map.json");
