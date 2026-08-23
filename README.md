@@ -63,8 +63,13 @@ The rule file is JSON:
 }
 ```
 
-The `flags` field accepts JavaScript regular-expression flags. The `g` flag is
-optional: RedactKit always iterates custom rules across the complete input.
+Each rule must be an object with non-empty string `name` and `pattern` fields.
+Optional `flags` and `description` fields must be strings, and `placeholder`
+must be a non-empty string when present. `flags` accepts valid JavaScript
+regular-expression flags. Invalid JSON, field values, patterns, or flags fail
+before RedactKit creates an output directory, redacted file, or map.
+
+The `g` flag is optional: RedactKit always iterates custom rules across the complete input.
 Patterns that can match an empty string are also supported; iteration advances
 by one Unicode code point after each empty match so scans and redactions finish
 deterministically.
