@@ -408,6 +408,38 @@ describe("redact — with custom rules", () => {
     );
   });
 
+  it("scans and redacts sticky custom rules beyond offset zero", () => {
+    const testDir = join(TMP, "redact-custom-sticky");
+    const testFile = join(testDir, "tickets.txt");
+    mkdirSync(testDir, { recursive: true });
+    writeFileSync(testFile, "prefix SUP-100001 and SUP-100002", "utf8");
+    const rule: RedactionRule = {
+      name: "ticket",
+      description: "Support ticket",
+      pattern: /SUP-[0-9]{6}/y,
+      placeholder: "TICKET",
+      source: "custom",
+    };
+
+    const scanResult = scan({ files: [testFile], rules: [rule] });
+    assert.deepEqual(scanResult.matches.map(({ line, column }) => ({ line, column })), [
+      { line: 1, column: 8 },
+      { line: 1, column: 23 },
+    ]);
+
+    const result = redact({
+      files: [testFile],
+      outDir: join(TMP, "redact-custom-sticky-out"),
+      mapPath: join(TMP, "redact-custom-sticky-map.json"),
+      rules: [rule],
+    });
+    assert.equal(result.matches.length, 2);
+    assert.equal(
+      readFileSync(result.written[0], "utf8"),
+      "prefix <REDACTED_TICKET_001> and <REDACTED_TICKET_002>",
+    );
+  });
+
   it("preserves assignment context and reports the captured value position", () => {
     const testDir = join(TMP, "redact-custom-capture");
     const testFile = join(testDir, "input.txt");
@@ -657,8 +689,9 @@ describe("cli — custom rule files", () => {
   });
 
   for (const testCase of [
-    { name: "non-global", pattern: "SUP-[0-9]{6}", flags: "i", expected: 2 },
-    { name: "zero-length", pattern: "(?=.)", flags: "", expected: 21 },
+    { name: "non-global", pattern: "SUP-[0-9]{6}", flags: "i", input: "SUP-100001 SUP-100002", expected: 2 },
+    { name: "sticky", pattern: "SUP-[0-9]{6}", flags: "y", input: "prefix SUP-100001 SUP-100002", expected: 2 },
+    { name: "zero-length", pattern: "(?=.)", flags: "", input: "SUP-100001 SUP-100002", expected: 21 },
   ]) {
     it(`finishes scan and redact for a ${testCase.name} rule`, () => {
       const testDir = join(TMP, `cli-custom-${testCase.name}`);
@@ -667,7 +700,7 @@ describe("cli — custom rule files", () => {
       const outDir = join(testDir, "out");
       const mapPath = join(testDir, "map.json");
       mkdirSync(testDir, { recursive: true });
-      writeFileSync(input, "SUP-100001 SUP-100002", "utf8");
+      writeFileSync(input, testCase.input, "utf8");
       writeFileSync(
         rules,
         JSON.stringify({
