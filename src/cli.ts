@@ -39,7 +39,8 @@ RULE FILE FORMAT (JSON)
   }
 
   JavaScript regex flags are accepted. The g flag is optional; all matches are
-  processed. Empty matches advance by one Unicode code point.
+  processed. Sticky y rules search the complete input. Empty matches advance
+  by one Unicode code point.
 
 EXIT CODES
   0   Success (for scan: no secrets found)

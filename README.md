@@ -70,6 +70,9 @@ regular-expression flags. Invalid JSON, field values, patterns, or flags fail
 before RedactKit creates an output directory, redacted file, or map.
 
 The `g` flag is optional: RedactKit always iterates custom rules across the complete input.
+The sticky `y` flag is accepted, but scanning treats it as global search so a
+rule can find matches beyond offset zero; every other JavaScript flag keeps its
+normal meaning.
 Patterns that can match an empty string are also supported; iteration advances
 by one Unicode code point after each empty match so scans and redactions finish
 deterministically.
