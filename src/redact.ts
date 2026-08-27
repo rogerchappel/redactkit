@@ -13,7 +13,11 @@ import { fingerprint } from "./fingerprint.js";
 import { cloneRule, builtInRules } from "./rules.js";
 
 function* ruleMatches(rule: RedactionRule, content: string): Generator<RegExpExecArray> {
-  let flags = rule.pattern.flags.includes("g") ? rule.pattern.flags : `${rule.pattern.flags}g`;
+  // Sticky matching anchors every exec call at lastIndex. That is useful for
+  // tokenizers, but a scanner must search forward across the complete input.
+  // Preserve all other rule semantics while normalizing iteration to global.
+  let flags = rule.pattern.flags.replace("y", "");
+  if (!flags.includes("g")) flags += "g";
   if (!flags.includes("d")) flags += "d";
   const pattern = new RegExp(rule.pattern.source, flags);
   let match: RegExpExecArray | null;
