@@ -29,9 +29,10 @@
     "dev": "tsx src/cli.ts",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test dist/tests/*.test.js",
+    "test:node-compat": "pnpm run build && node --test scripts/node-compat.test.mjs",
     "smoke": "bash scripts/smoke.sh",
     "package:smoke": "pnpm run build && node scripts/package-smoke.mjs",
-    "release:check": "pnpm run check && pnpm test && pnpm run smoke && pnpm run package:smoke && pnpm run release:readiness",
+    "release:check": "pnpm run check && pnpm test && pnpm run test:node-compat && pnpm run smoke && pnpm run package:smoke && pnpm run release:readiness",
     "release:readiness": "node --test scripts/validate-release-readiness.test.mjs && node scripts/validate-release-readiness.mjs"
   },
   "keywords": [
