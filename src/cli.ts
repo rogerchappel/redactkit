@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { resolve, join } from "node:path";
+import { resolve, join, dirname } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { redact, scan, builtInRules, cloneRule } from "./redact.js";
 import type { RedactionRule, SerializableRule } from "./types.js";
 
@@ -163,7 +164,8 @@ function loadCustomRules(path: string): RedactionRule[] {
 }
 
 async function main() {
-  const pkg = JSON.parse(readFileSync(join(import.meta.dirname, "..", "..", "package.json"), "utf8"));
+  const moduleDirectory = dirname(fileURLToPath(import.meta.url));
+  const pkg = JSON.parse(readFileSync(join(moduleDirectory, "..", "..", "package.json"), "utf8"));
   const { command, files, flags } = parseArgs(process.argv);
 
   if (flags.version) {
