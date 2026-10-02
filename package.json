@@ -54,7 +54,7 @@
   "homepage": "https://github.com/rogerchappel/redactkit#readme",
   "packageManager": "pnpm@10.11.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.10.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

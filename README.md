@@ -4,7 +4,7 @@ Local-first CLI for scrubbing secrets and private details from logs, transcripts
 
 ## Status
 
-This is an early v0.1.0 CLI and library for deterministic local scanning and redaction. No version has been published to npm or GitHub Releases yet.
+This is an early v0.1.0 CLI and library for deterministic local scanning and redaction. It requires Node.js 20.10.0 or newer; CI exercises the minimum supported Node 20 patch and Node.js 22. No version has been published to npm or GitHub Releases yet.
 
 ## Install
 
