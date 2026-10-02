@@ -63,6 +63,10 @@ jobs:
             exit 1
           fi
 
+      - name: Verify declared minimum Node version
+        if: matrix.node-version == '20.10.0'
+        run: node -e "const { engines } = require('./package.json'); if (engines.node !== '>=20.10.0') throw new Error('CI minimum must match package engines.node');"
+
       - name: Run release readiness checks
         run: |
           set -euo pipefail
